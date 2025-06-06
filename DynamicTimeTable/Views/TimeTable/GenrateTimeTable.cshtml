@@ -1,0 +1,332 @@
+﻿@*Step 1 Intial Table Input Input*@
+
+<style>
+    input.tblInput {
+        width: 250px;
+        max-width: 100%;
+        height: 38px;
+        box-sizing: border-box;
+    }
+
+    .tblInput {
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+</style>
+
+
+<div id="tblInputDiv">
+    <h2>Enter Time-Table Info</h2>
+    <div>
+        <strong><label for="WorkingDays">Working Days</label></strong>
+        <input class="form-control tblInput" type="number" id="workingDays" name="WorkingDays" />
+        <span class="text-danger" id="WorkingDaysError"></span>
+    </div>
+    <div>
+        <strong><label for="SubjectsPerDay">Subjects Per Day</label></strong>
+        <input class="form-control tblInput" type="number" id="subjectsPerDay" name="SubjectsPerDay" />
+        <span class="text-danger" id="SubjectsPerDayError"></span>
+    </div>
+    <div>
+        <strong><label for="TotalSubjects">Total Subjects</label></strong>
+        <input class="form-control tblInput" type="number" id="totalSubjects" name="TotalSubjects" />
+        <span class="text-danger" id="TotalSubjectsError"></span>
+    </div>
+
+    <div>
+        <strong><label>Total Weekly Hours</label></strong>
+        <input class="form-control tblInput" id="totalHours" readonly />
+    </div>
+    <button type="button" id="Next1" style="margin-top: 10px;" class="btn btn-primary">Next</button>
+    <button type="button" id="Back1" style="margin-top: 10px;" class="btn btn-primary">Back</button>
+</div>
+
+
+@*Step 2 Subject Input*@
+<div id="subjectInputDiv" style="display:none">
+    <input type="hidden" id="totalHoursExpected" />
+
+    <table class="table table-bordered text-center" id="tblSubject">
+        <thead>
+            <tr>
+                <th>Subject Name</th>
+                <th>Hours</th>
+            </tr>
+        </thead>
+        <tbody id="subjectRows">
+            <!-- Add more rows as needed -->
+        </tbody>
+    </table>
+
+    <!-- Subject Suggestions Datalist -->
+    <datalist id="subjectSuggestions">
+        <option value="Maths" />
+        <option value="Physics" />
+        <option value="Chemistry" />
+        <option value="Social Science" />
+        <option value="English" />
+        <option value="Gujarati" />
+        <option value="Hindi" />
+        <option value="Sanskrit" />
+    </datalist>
+
+    <div class="form-group" style="margin-top: 10px;">
+        <strong><label>Total Entered Hours</label></strong>
+        <input type="text" class="form-control tblInput" style=" width: 226px;" id="enteredTotalHours" readonly />
+    </div>
+
+    <button type="button" style="margin-top: 10px;" class="btn btn-success" id="generateBtn" disabled>Generate Timetable</button>
+    <button type="button" id="Back2" style="margin-top: 10px;" class="btn btn-primary">Back</button>
+
+
+</div>
+
+
+@*Step 2 Subject Input*@
+
+<div id="timeTableDiv" style="display:none">
+    <h2>Generated Time Table</h2>
+
+    <table id="timeTable" class="table table-bordered text-center">
+        <thead>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+</div>
+
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        var reqRow;
+        var reqCol;
+        const allSubjects = [
+            "Maths", "Physics", "Chemistry", "Social Science",
+            "English", "Gujarati", "Hindi", "Sanskrit"
+        ];
+
+        $(document).ready(function () 
+        {
+            //validation on input change
+            $('#workingDays').on('input', validateWorkingDays);
+            $('#subjectsPerDay').on('input', validateSubjectsPerDay);
+            $('#totalSubjects').on('input', validateTotalSubjects);
+
+            // Initial input detail filled - Next button click
+            $('#Next1').on('click', function () {
+                let validWD = validateWorkingDays();
+                let validSPD = validateSubjectsPerDay();
+                let validTS = validateTotalSubjects();
+
+                if (!validWD || !validSPD || !validTS) {
+                    toastr.remove();
+                    toastr.error('Please provide valid values.');
+                    return false;
+                } else {
+                    reqRow = $('#workingDays').val();
+                    reqCol = $('#subjectsPerDay').val();
+                    let totalSubject = parseInt($('#totalSubjects').val());
+
+                    if (totalSubject > 0) {
+                        var subjectRow = "";
+
+                        for(let i = 0; i < totalSubject; i++){
+                            subjectRow += "<tr> "
+                            subjectRow += "<td> <input name='SubjectName' class='form-control subjectName'" + (i+1) + " list='subjectSuggestions' required /> </td>";
+                            subjectRow += "<td> <input name='Hours' type='number' class='form-control subjectHours'required /> </td>";
+                            subjectRow += "</tr> "
+                        }
+
+                        $("#subjectRows").append(subjectRow);
+
+                        $('#totalHoursExpected').val($('#totalHours').val());
+                        $('#enteredTotalHours').val("");
+
+                        $("#subjectInputDiv").show();
+                        $("#tblInputDiv").hide();
+                    }
+                }
+            });
+
+            // Calculate total hours on input
+            $('#workingDays, #subjectsPerDay').on('input', calculateTotalHours);
+
+            // Step-1 back button
+            $('#Back1').on('click', function () {
+                clearInputs();
+                window.location.href = '/Home/Index';
+                $("#timeTableDiv").hide();
+            });
+
+            // Step-2 Subject Name and Hours
+            $(document).on('focus change input', 'input[name^="SubjectName"]', function () {
+                updateSubjectDatalist($(this));
+            });
+
+            $(document).on('input', '.subjectHours', updateEnteredHours);
+
+            // Step-2 Back button click event
+            $('#Back2').on('click', function () {
+                $("#tblSubject tbody").empty();
+                $("#tblInputDiv").show();
+                $("#subjectInputDiv").hide();
+                $('#generateBtn').prop('disabled', true);
+            });
+
+            // Step 3 - Generating Time table
+            $('#generateBtn').on('click', function () {
+                const subjectList = [];
+                const subjectsPerDay = parseInt($('#subjectsPerDay').val());
+                const workingDay = parseInt($('#workingDays').val());
+
+            // Clear previous table
+            $("#timeTable thead").empty();
+            $("#timeTable tbody").empty();
+
+            // get subject names
+            $('input[name^="SubjectName"]').each(function () {
+                const val = $(this).val().trim();
+                if (val) {
+                    subjectList.push(val);
+                }
+            });
+
+            // Generate and shuffled subject pool
+            const subjectPool = generateSubjectPool(subjectList, subjectsPerDay, workingDay);
+            const shuffledPool = shuffleArray(subjectPool);
+
+            if (shuffledPool.length > 0) {
+
+                // Generate table header
+                let headerRow = "<tr>";
+                for (let day = 0; day < workingDay; day++) {
+                    headerRow += `<th>Day ${day + 1}</th>`;
+                }
+                headerRow += "</tr>";
+                $("#timeTable thead").html(headerRow);
+
+                // Generate table body 
+                let bodyRows = "";
+                for (let period = 0; period < subjectsPerDay; period++) {
+                    bodyRows += "<tr>";
+                    for (let day = 0; day < workingDay; day++) {
+                        const index = period + day * subjectsPerDay;
+                        const subject = shuffledPool[index];
+                        bodyRows += `<td>${subject}</td>`;
+                    }
+                    bodyRows += "</tr>";
+                }
+
+                $("#timeTable tbody").html(bodyRows);
+                $("#timeTableDiv").show();
+                $("#subjectInputDiv").hide();
+            }
+        });
+      });
+
+        // Functions
+        function clearInputs() {
+            $('#workingDays').val("");
+            $('#subjectsPerDay').val("");
+            $('#totalSubjects').val("");
+            $('#totalHours').val("");
+            $("#tblSubject tbody").empty();
+        }
+
+        function validateWorkingDays() {
+            let val = $('#workingDays').val();
+            if (!val || isNaN(val) || val <= 0 || val > 7 || !Number.isInteger(+val)) {
+                toastr.remove();
+                toastr.error('Working Days must be an integer between 1 and 7.');
+                return false;
+            }
+            return true;
+        }
+
+        function validateSubjectsPerDay() {
+            let val = $('#subjectsPerDay').val();
+            if (!val || isNaN(val) || val <= 0 || val >= 9 || !Number.isInteger(+val)) {
+                toastr.remove();
+                toastr.error('Subjects Per Day must be a positive integer less than 9.');
+                return false;
+            }
+            toastr.remove();
+            return true;
+        }
+
+        function validateTotalSubjects() {
+            let val = $('#totalSubjects').val();
+            if (!val || isNaN(val) || val <= 0 || !Number.isInteger(+val)) {
+                toastr.remove();
+                toastr.error('Total Subjects must be a positive integer.');
+                return false;
+            }
+            toastr.remove();
+            return true;
+        }
+
+        function calculateTotalHours() {
+            let days = parseInt($('#workingDays').val()) || 0;
+            let subjects = parseInt($('#subjectsPerDay').val()) || 0;
+            $('#totalHours').val(days * subjects);
+        }
+
+        function updateSubjectDatalist($input) {
+            const currentValue = $input.val().trim();
+            const usedSubjects = [];
+
+            $('input[name^="SubjectName"]').each(function () {
+                const val = $(this).val().trim();
+                if (val && val !== currentValue) {
+                    usedSubjects.push(val);
+                }
+            });
+
+            const availableSubjects = allSubjects.filter(sub => !usedSubjects.includes(sub));
+            const listId = $input.attr('list');
+            const $datalist = $('#' + listId);
+            $datalist.empty();
+
+            $.each(availableSubjects, function (index, subject) {
+                $datalist.append($('<option>').val(subject));
+            });
+        }
+
+        function updateEnteredHours() {
+            let total = 0;
+            $('.subjectHours').each(function () {
+                let value = parseInt($(this).val()) || 0;
+                total += value;
+            });
+
+            $('#enteredTotalHours').val(total);
+            let expected = parseInt($('#totalHoursExpected').val()) || 0;
+            $('#generateBtn').prop('disabled', total !== expected);
+        }
+
+        function generateSubjectPool(subjects, subjectsPerDay, totalDays) {
+            const totalSubjectsNeeded = subjectsPerDay * totalDays;
+            const subjectPool = [];
+
+            for (let i = 0; i < totalSubjectsNeeded; i++) {
+                const subject = subjects[i % subjects.length];
+                console.log(i + " % " + subjects.length + " is " + i % subjects.length);
+                subjectPool.push(subject);
+            }
+
+            console.log(subjectPool);
+            return subjectPool;
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+    </script>
+}

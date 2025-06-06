@@ -1,0 +1,31 @@
+﻿@model string[,]
+
+@{
+    ViewData["Title"] = "Generated Time Table";
+    int days = ViewBag.WorkingDays;
+    int rows = ViewBag.SubjectsPerDay;
+}
+
+<h2>Generated Time Table</h2>
+
+<table class="table table-bordered text-center">
+    <thead>
+        <tr>
+            @for (int d = 1; d <= days; d++)
+            {
+                <th>Day @d</th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @for (int i = 0; i < rows; i++)
+        {
+            <tr>
+                @for (int j = 0; j < days; j++)
+                {
+                    <td>@Model[i, j]</td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>

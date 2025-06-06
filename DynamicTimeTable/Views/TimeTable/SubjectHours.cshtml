@@ -1,0 +1,146 @@
+﻿@model List<DynamicTimeTable.Models.DynamicTimeTable.SubjectHourModel>
+
+
+
+@{
+    ViewData["Title"] = "Enter Subject Hours";
+    int totalHours = ViewBag.TotalHours;
+    int totalSubjects = ViewBag.TotalSubjects;
+}
+<style>
+    .totalHours {
+        width: 250px;
+        max-width: 100%;
+        height: 38px;
+        box-sizing: border-box;
+    }
+</style>
+
+<h2>Enter Hours for Each Subject</h2>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger">@ViewBag.Error</div>
+}
+
+<form asp-action="Generate" method="post">
+    <input type="hidden" id="totalHoursExpected" value="@totalHours" />
+
+    <table class="table table-bordered text-center">
+        <thead>
+            <tr>
+                <th>Subject Name</th>
+                <th>Hours</th>
+            </tr>
+        </thead>
+        <tbody id="subjectRows">
+            @for (int i = 0; i < totalSubjects; i++)
+            {
+                <tr>
+                    <td>
+                        <input name="[@i].SubjectName" class="form-control" list="subjectSuggestions" required />
+                    </td>
+                    <td>
+                        <input name="[@i].Hours" type="number" class="form-control subject-hours" required />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <!-- Subject Suggestions Datalist -->
+    <datalist id="subjectSuggestions">
+        <option value="Maths" />
+        <option value="Physics" />
+        <option value="Chemistry" />
+        <option value="Social Science" />
+        <option value="English" />
+        <option value="Gujarati" />
+        <option value="Hindi" />
+        <option value="Sanskrit" />
+    </datalist>
+
+    <div class="form-group">
+        <strong><label>Total Entered Hours</label></strong>
+        <input type="text" placeholder=""  class="form-control totalHours" style="margin-top: 10px; width: 226px;" id="enteredTotalHours" readonly />
+    </div>
+
+    <button type="submit" class="btn btn-success" style="margin-top: 10px;"  id="generateBtn" disabled>Generate Timetable</button>
+    <button type="button" style="margin-top: 10px;" class="btn btn-primary back">Back</button>
+</form>
+
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+
+        const allSubjects = [
+            "Maths", "Physics", "Chemistry", "Social Science",
+            "English", "Gujarati", "Hindi", "Sanskrit"
+        ];
+
+        $(document).ready(function () {
+
+            let placeValue = "total hours = " + @totalHours
+
+            $('#enteredTotalHours').attr('placeholder', placeValue);
+
+            $('.subject-hours').on('input', updateEnteredHours);
+
+            $('input[name$=".SubjectName"]').on('focus change input', function () {
+                updateSubjectDatalist($(this));
+            });
+
+            $('.back').click(function () {
+                window.location.href = '/TimeTable/TableInput';
+            });
+        });
+
+
+        //Functions
+        function updateSubjectDatalist($input) {
+            const currentValue = $input.val().trim();
+            const usedSubjects = [];
+
+            // Collect used subjects (except current input)
+            $('input[name$=".SubjectName"]').each(function () {
+                const val = $(this).val().trim();
+                if (val && val !== currentValue) {
+                    usedSubjects.push(val);
+                }
+            });
+
+            // Filter available subjects
+            const availableSubjects = allSubjects.filter(sub => !usedSubjects.includes(sub));
+
+            const listId = $input.attr('list');
+            const $datalist = $('#' + listId);
+            $datalist.empty();
+
+            // Add available options
+            $.each(availableSubjects, function (index, subject) {
+                $datalist.append($('<option>').val(subject));
+            });
+        }
+
+        function updateEnteredHours() {
+            let total = 0;
+
+            // Sum all entered subject hours
+            $('.subject-hours').each(function () {
+                let value = parseInt($(this).val()) || 0;
+                total += value;
+            });
+
+            // Display total entered hours
+            $('#enteredTotalHours').val(total);
+
+            // Enable or disable the generate button
+            let expected = parseInt($('#totalHoursExpected').val()) || 0;
+            $('#generateBtn').prop('disabled', total !== expected);
+        }
+    </script>
+}
+

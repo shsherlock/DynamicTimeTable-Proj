@@ -1,0 +1,45 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h5 class="display-4">Welcome to the Timetable Generator</h5>
+    <p></p>
+    <br />
+    <div>
+        <button type="button" class="btn btn-primary T1" title="TimeTable Version 1">TimeTable V1 </button>
+        <button type="button" class="btn btn-primary T2" title="TimeTable Version 2">TimeTable V2</button>
+    </div>
+
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+                $(document).ready(function () {
+
+            $('.btn').click(function () {
+                // Determine version from clicked button's class
+                let version = $(this).hasClass("T1") ? "T1" : "T2";
+
+                goToGenerateTimeTablePage(version);
+            });
+
+            function goToGenerateTimeTablePage(version) {
+                if (version === "T1") {
+                    window.location.href = '/TimeTable/TableInput';
+                }
+                else if (version === "T2") {
+                    window.location.href = '/TimeTable/GenrateTimeTable';  
+                }
+            }
+
+        });
+
+
+    </script>
+}
+
+
