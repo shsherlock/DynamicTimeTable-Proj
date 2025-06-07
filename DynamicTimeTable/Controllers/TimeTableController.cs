@@ -15,7 +15,7 @@ namespace DynamicTimeTable.Controllers
         }
 
         [HttpGet]
-        public IActionResult GenrateTimeTable()
+        public IActionResult GenerateTimeTable()
         {
             return View();
         }
